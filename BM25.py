@@ -17,20 +17,6 @@ class BM25:
         self.k1 = k1
 
     def fit(self, corpus):
-        """
-        Fit the various statistics that are required to calculate BM25 ranking
-        score using the corpus given.
-
-        Parameters
-        ----------
-        corpus : list[list[str]]
-            Each element in the list represents a document, and each document
-            is a list of the terms.
-
-        Returns
-        -------
-        self
-        """
         tf = []
         df = {}
         idf = {}
@@ -63,54 +49,40 @@ class BM25:
         self.corpus_ = corpus
         self.corpus_size_ = corpus_size
         self.avg_doc_len_ = sum(doc_len) / corpus_size
+        self.Invbins = {}
+        self.InvbinsScore = {}
         return self
 
     def search(self, query):
-        scores = [self._score(query, index) for index in range(self.corpus_size_)]
-        return scores
-
-    def _score(self, query, index):
-        score = 0.0
-        doc_len = self.doc_len_[index]
-        frequencies = self.tf_[index] # index represent document number
         for term in query:
-            if term not in frequencies:
-                continue
-
-            freq = frequencies[term]
-            numerator = self.idf_[term] * freq * (self.k1 + 1)
-            denominator = freq + self.k1 * (1 - self.b + self.b * doc_len / self.avg_doc_len_)
-            score += (numerator / denominator)
-        return score
-
-def makeindex(sentences_train):
-    # bm25Invbins = {}
-    bm25 = BM25()
-    print ("fitting ")
-    bm25.fit(sentences_train)
-    # allwords = np.unique(flatten(sentences_train))
-
-    Invbins = {}
-    InvbinsScore = {}
-    for i,sentence in enumerate(sentences_train):
-        for word, freq in bm25.tf_[i].items():
-            # freq = bm25.tf_[i][word]
-            doc_len = bm25.doc_len_[i]
-            numerator = bm25.idf_[word] * freq * (bm25.k1 + 1)
-            denominator = freq + bm25.k1 * (1 - bm25.b + bm25.b * doc_len/bm25.avg_doc_len_)
-            score = (numerator / denominator)
-            try:
-                Invbins[word].append(i)
-                InvbinsScore[word].append(score)
+            try: 
+                print (self.Invbins[term], self.InvbinsScore[term])
             except(KeyError):
-                Invbins[word] = []
-                InvbinsScore[word] = []
-                Invbins[word].append(i)
-                InvbinsScore[word].append(score)
-    # sort based on BM25 scores
-    for term in Invbins:
-        InvbinsScore[term] = np.array(InvbinsScore[term])
-        order = np.argsort(InvbinsScore[term])[::-1]
-        InvbinsScore[term] = InvbinsScore[term][order]
-        Invbins[term] = np.array(Invbins[term])[order]    
-    return [Invbins,InvbinsScore]
+                print (" ")
+
+    def makeindex(self, sentences_train):
+        print ("fitting ")
+        self.fit(sentences_train)
+        # allwords = np.unique(flatten(sentences_train))
+        for i,sentence in enumerate(sentences_train):
+            for word, freq in self.tf_[i].items():
+                # freq = self.tf_[i][word]
+                doc_len = self.doc_len_[i]
+                numerator = self.idf_[word] * freq * (self.k1 + 1)
+                denominator = freq + self.k1 * (1 - self.b + self.b * doc_len/self.avg_doc_len_)
+                score = (numerator / denominator)
+                try:
+                    self.Invbins[word].append(i)
+                    self.InvbinsScore[word].append(score)
+                except(KeyError):
+                    self.Invbins[word] = []
+                    self.InvbinsScore[word] = []
+                    self.Invbins[word].append(i)
+                    self.InvbinsScore[word].append(score)
+        # sort based on BM25 scores
+        for term in self.Invbins:
+            self.InvbinsScore[term] = np.array(self.InvbinsScore[term])
+            order = np.argsort(self.InvbinsScore[term])[::-1]
+            self.InvbinsScore[term] = self.InvbinsScore[term][order]
+            self.Invbins[term] = np.array(self.Invbins[term])[order]    
+        return [self.Invbins,self.InvbinsScore]
